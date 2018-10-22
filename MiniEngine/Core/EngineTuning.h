@@ -31,6 +31,7 @@ public:
     virtual void Increment( void ) {}    // DPad Right
     virtual void Decrement( void ) {}    // DPad Left
     virtual void Bang( void ) {}        // A Button
+	virtual void OnImGUI(const char* label) = 0;
 
     virtual void DisplayValue( TextContext& ) const {}
     virtual std::string ToString( void ) const { return ""; }
@@ -58,6 +59,7 @@ public:
     virtual void Increment( void ) override { m_Flag = true; }
     virtual void Decrement( void ) override { m_Flag = false; }
     virtual void Bang( void ) override { m_Flag = !m_Flag; }
+	virtual void OnImGUI(const char* label) override;
 
     virtual void DisplayValue( TextContext& Text ) const override;
     virtual std::string ToString( void ) const override;
@@ -76,6 +78,7 @@ public:
 
     virtual void Increment( void ) override { m_Value = Clamp(m_Value + m_StepSize); }
     virtual void Decrement( void ) override { m_Value = Clamp(m_Value - m_StepSize); }
+	virtual void OnImGUI(const char* label) override;
 
     virtual void DisplayValue( TextContext& Text ) const override;
     virtual std::string ToString( void ) const override;
@@ -101,6 +104,7 @@ public:
     virtual std::string ToString( void ) const override;
     virtual void SetValue( FILE* file, const std::string& setting ) override;
 
+	virtual void OnImGUI(const char* label) override;
 };
 
 class IntVar : public EngineVar
@@ -116,6 +120,8 @@ public:
     virtual void DisplayValue( TextContext& Text ) const override;
     virtual std::string ToString( void ) const override;
     virtual void SetValue( FILE* file, const std::string& setting ) override;
+
+	virtual void OnImGUI(const char* label) override;
 
 protected:
     int32_t Clamp( int32_t val ) { return val > m_MaxValue ? m_MaxValue : val < m_MinValue ? m_MinValue : val; }
@@ -142,6 +148,8 @@ public:
 
     void SetListLength(int32_t listLength) { m_EnumLength = listLength; m_Value = Clamp(m_Value); }
 
+	virtual void OnImGUI(const char* label) override;
+
 private:
     int32_t Clamp( int32_t val ) { return val < 0 ? 0 : val >= m_EnumLength ? m_EnumLength - 1 : val; }
 
@@ -160,10 +168,57 @@ public:
     virtual void DisplayValue( TextContext& Text ) const override;
     virtual void SetValue( FILE* file, const std::string& setting ) override;
 
+	virtual void OnImGUI(const char* label) override;
+
 private:
     std::function<void (void*)> m_Callback;
     void* m_Arguments;
     mutable uint32_t m_BangDisplay;
+};
+
+// Not open to the public.  Groups are auto-created when a tweaker's path includes the group name.
+class VariableGroup : public EngineVar
+{
+public:
+	VariableGroup() : m_IsExpanded(false) {}
+
+	EngineVar* FindChild(const std::string& name)
+	{
+		auto iter = m_Children.find(name);
+		return iter == m_Children.end() ? nullptr : iter->second;
+	}
+
+	void AddChild(const std::string& name, EngineVar& child)
+	{
+		m_Children[name] = &child;
+		child.m_GroupPtr = this;
+	}
+
+	void Display(TextContext& Text, float leftMargin, EngineVar* highlightedTweak);
+
+	void SaveToFile(FILE* file, int fileMargin);
+	void LoadSettingsFromFile(FILE* file);
+
+	EngineVar* NextVariable(EngineVar* currentVariable);
+	EngineVar* PrevVariable(EngineVar* currentVariable);
+	EngineVar* FirstVariable(void);
+	EngineVar* LastVariable(void);
+
+	bool IsExpanded(void) const { return m_IsExpanded; }
+
+	virtual void Increment(void) override { m_IsExpanded = true; }
+	virtual void Decrement(void) override { m_IsExpanded = false; }
+	virtual void Bang(void) override { m_IsExpanded = !m_IsExpanded; }
+
+	virtual void SetValue(FILE*, const std::string&) override {}
+
+	virtual void OnImGUI(const char* label) override;
+
+	static VariableGroup sm_RootGroup;
+
+private:
+	bool m_IsExpanded;
+	std::map<std::string, EngineVar*> m_Children;
 };
 
 class GraphicsContext;

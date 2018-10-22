@@ -45,48 +45,7 @@ namespace EngineTuning
     bool sm_IsVisible = false;
 }
 
-// Not open to the public.  Groups are auto-created when a tweaker's path includes the group name.
-class VariableGroup : public EngineVar
-{
-public:
-    VariableGroup() : m_IsExpanded(false) {}
 
-    EngineVar* FindChild( const string& name )
-    {
-        auto iter = m_Children.find(name);
-        return iter == m_Children.end() ? nullptr : iter->second;
-    }
-     
-    void AddChild( const string& name, EngineVar& child )
-    {
-        m_Children[name] = &child;
-        child.m_GroupPtr = this;
-    }
-
-    void Display( TextContext& Text, float leftMargin, EngineVar* highlightedTweak );
-
-    void SaveToFile( FILE* file, int fileMargin );
-    void LoadSettingsFromFile( FILE* file );
-
-    EngineVar* NextVariable( EngineVar* currentVariable );
-    EngineVar* PrevVariable( EngineVar* currentVariable );
-    EngineVar* FirstVariable( void );
-    EngineVar* LastVariable( void );
-
-    bool IsExpanded( void ) const { return m_IsExpanded; }
-
-    virtual void Increment( void ) override { m_IsExpanded = true; }
-    virtual void Decrement( void ) override { m_IsExpanded = false; }
-    virtual void Bang( void ) override { m_IsExpanded = !m_IsExpanded; }
-
-    virtual void SetValue( FILE*, const std::string& ) override {}
-    
-    static VariableGroup sm_RootGroup;
-
-private:
-    bool m_IsExpanded;
-    std::map<string, EngineVar*> m_Children;
-};
 
 VariableGroup VariableGroup::sm_RootGroup;
 
